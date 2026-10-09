@@ -340,7 +340,151 @@ export default function App() {
             )}
           </div>
 
-          {activeTab === 'calendar' ? (
+          {activeTab === 'dashboard' ? (
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4 flex flex-col gap-6">
+              {/* Dashboard Embedded Analytics & Mini Calendar Preview Grid */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+                {/* Mini Quick-Calendar Widget */}
+                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-extrabold text-slate-900">
+                      {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </h3>
+                    <div className="flex gap-1 text-slate-400">
+                      <button onClick={prevMonth} className="hover:text-indigo-600"><FiChevronLeft size={16} /></button>
+                      <button onClick={nextMonth} className="hover:text-indigo-600"><FiChevronRight size={16} /></button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-7 mb-2">
+                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                      <div key={i} className="text-center text-[10px] font-bold text-slate-400">{d}</div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-y-1">
+                    {getCalendarDays().slice(0, 28).map((day, idx) => {
+                      const isToday = day.toDateString() === new Date().toDateString();
+                      const hasTasks = tasks.some(t => new Date(t.dueDate).toDateString() === day.toDateString());
+                      return (
+                        <div key={idx} className="flex justify-center items-center py-1">
+                          <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold relative ${
+                            isToday ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                          }`}>
+                            {day.getDate()}
+                            {hasTasks && !isToday && <span className="absolute bottom-0.5 w-1 h-1 bg-indigo-500 rounded-full"></span>}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Dashboard Summary Widget */}
+                <div className="xl:col-span-2 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-3xl p-8 text-white shadow-md flex flex-col justify-between relative overflow-hidden">
+                  <div>
+                    <span className="px-3 py-1 bg-white/20 text-white rounded-lg text-[10px] font-extrabold uppercase tracking-wider">Overview</span>
+                    <h3 className="text-2xl font-extrabold mt-3 mb-1">Welcome back, {settings.name}!</h3>
+                    <p className="text-white/80 text-sm font-medium">You have completed {statsCompleted} out of {statsTotal} total tasks. Keep up the momentum!</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/10">
+                    <div>
+                      <p className="text-white/70 text-[10px] font-extrabold uppercase">Pending</p>
+                      <p className="text-2xl font-extrabold mt-0.5">{pendingCount}</p>
+                    </div>
+                    <div>
+                      <p className="text-white/70 text-[10px] font-extrabold uppercase">In Progress</p>
+                      <p className="text-2xl font-extrabold mt-0.5">{inProgressCount}</p>
+                    </div>
+                    <div>
+                      <p className="text-white/70 text-[10px] font-extrabold uppercase">High Priority</p>
+                      <p className="text-2xl font-extrabold mt-0.5">{highPriority}</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Task Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {processedTasks.length > 0 ? processedTasks.map((task) => (
+                  <div key={task._id} className="group relative bg-white border border-slate-200 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-100/50 p-6 rounded-3xl transition-all duration-300 flex flex-col justify-between min-h-[180px] overflow-hidden">
+                    <div className={`absolute top-0 left-0 w-full h-1.5 ${
+                      task.priority === 'High' ? 'bg-rose-500' :
+                      task.priority === 'Medium' ? 'bg-amber-400' : 'bg-emerald-500'
+                    }`}></div>
+
+                    <div>
+                      <div className="flex justify-between items-start mb-3 mt-1">
+                        <h3 className="font-extrabold text-slate-800 text-lg leading-tight line-clamp-2 pr-4">{task.title}</h3>
+
+                        <div className="flex gap-2 absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openModal(task)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg bg-white border border-slate-100 shadow-sm transition-colors">
+                            <FiEdit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDialog({ isOpen: true, type: 'DELETE_TASK', taskId: task._id })}
+                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg bg-white border border-slate-100 shadow-sm transition-colors"
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-slate-500 line-clamp-2 mb-6">{task.description}</p>
+                    </div>
+
+                    <div className="flex justify-between items-end mt-auto">
+                      <div className="flex bg-slate-50 border border-slate-100 rounded-lg p-1 gap-1">
+                        <button
+                          onClick={() => handleQuickStatusChange(task, 'Pending')}
+                          className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${
+                            task.status === 'Pending' ? 'bg-slate-200 text-slate-700 shadow-sm' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                          }`}
+                        >
+                          Pending
+                        </button>
+                        <button
+                          onClick={() => handleQuickStatusChange(task, 'In Progress')}
+                          className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${
+                            task.status === 'In Progress' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-600'
+                          }`}
+                        >
+                          In Progress
+                        </button>
+                        <button
+                          onClick={() => handleQuickStatusChange(task, 'Completed')}
+                          className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${
+                            task.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'text-slate-400 hover:bg-emerald-50 hover:text-emerald-600'
+                          }`}
+                        >
+                          Completed
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-1.5">
+                        <div className={`flex items-center gap-1.5 ${new Date(task.dueDate) < new Date() && task.status !== 'Completed' ? 'text-rose-500' : 'text-slate-400'}`}>
+                          <FiCalendar size={12} />
+                          <span className="text-xs font-bold">{new Date(task.dueDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</span>
+                        </div>
+                        <span className={`text-[10px] font-bold uppercase flex items-center gap-1 ${
+                          task.priority === 'High' ? 'text-rose-500' :
+                          task.priority === 'Medium' ? 'text-amber-500' : 'text-emerald-500'
+                        }`}>
+                          {task.priority === 'High' && <FiAlertCircle size={10} />}
+                          {task.priority} Priority
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="col-span-full flex flex-col items-center justify-center h-64 bg-white border-2 border-dashed border-slate-200 rounded-3xl">
+                    <FiCheckCircle size={48} className="text-slate-300 mb-4" />
+                    <p className="text-slate-500 font-bold text-lg">You're all caught up!</p>
+                    <p className="text-slate-400 text-sm mt-1">No tasks found matching your current filters.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : activeTab === 'calendar' ? (
             <div className="flex-1 bg-white border border-slate-200 rounded-3xl shadow-sm flex flex-col overflow-hidden">
               <div className="flex justify-between items-center p-6 border-b border-slate-100">
                 <h3 className="text-xl font-extrabold text-slate-800">
