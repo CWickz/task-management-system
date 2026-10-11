@@ -17,13 +17,15 @@ export default function App() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [sortBy, setSortBy] = useState('newest');
 
-  // UI State
+  // Navigation & UI State
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 9, 1));
+  const [apiError, setApiError] = useState('');
+  const [formError, setFormError] = useState('');
 
-  // Persistent Settings State
+  // Persistent Settings
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('taskmaster_settings');
     return saved ? JSON.parse(saved) : {
@@ -53,12 +55,17 @@ export default function App() {
     try {
       const res = await axios.get(API_URL);
       setTasks(res.data);
+      setApiError('');
     } catch (error) {
-      console.error("Error fetching tasks", error);
+      const msg = error.response?.data?.error || 'Unable to connect to backend server.';
+      setApiError(msg);
     }
   };
 
-  const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (formError) setFormError('');
+  };
 
   const handleSettingChange = (e) => {
     setSettings({ ...settings, [e.target.name]: e.target.value });
@@ -82,6 +89,7 @@ export default function App() {
   };
 
   const openModal = (task = null) => {
+    setFormError('');
     if (task) {
       setEditingId(task._id);
       setFormData({
@@ -100,6 +108,10 @@ export default function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.title.trim()) return setFormError('Task title cannot be empty.');
+    if (!formData.description.trim()) return setFormError('Task description cannot be empty.');
+    if (!formData.dueDate) return setFormError('Please pick a valid due date.');
+
     try {
       const payload = editingId ? formData : { ...formData, createdDate: new Date().toISOString() };
 
@@ -111,7 +123,8 @@ export default function App() {
       setIsModalOpen(false);
       fetchTasks();
     } catch (error) {
-      console.error("Error saving task", error);
+      const msg = error.response?.data?.error || 'Failed to save task.';
+      setFormError(msg);
     }
   };
 
@@ -120,6 +133,7 @@ export default function App() {
   };
 
   const handleClearCompleted = () => {
+    if (statsCompleted === 0) return;
     setConfirmDialog({ isOpen: true, type: 'CLEAR_COMPLETED', taskId: null });
   };
 
@@ -129,7 +143,7 @@ export default function App() {
       await axios.put(`${API_URL}/${task._id}`, { ...task, status: newStatus });
       fetchTasks();
     } catch (error) {
-      console.error("Error updating status", error);
+      setApiError(error.response?.data?.error || 'Failed to update task status.');
     }
   };
 
@@ -138,8 +152,14 @@ export default function App() {
       if (confirmDialog.type === 'DELETE_TASK') {
         await axios.delete(`${API_URL}/${confirmDialog.taskId}`);
       } else if (confirmDialog.type === 'CLEAR_COMPLETED') {
-        const completedTasks = tasks.filter(t => t.status === 'Completed');
-        await Promise.all(completedTasks.map(task => axios.delete(`${API_URL}/${task._id}`)));
+        try {
+          // Attempt dedicated bulk route first
+          await axios.delete(`${API_URL}/completed`);
+        } catch (bulkErr) {
+          // Fallback to per-ID batch delete if backend routes haven't been reloaded yet
+          const completedTasks = tasks.filter(t => t.status === 'Completed');
+          await Promise.all(completedTasks.map(task => axios.delete(`${API_URL}/${task._id}`)));
+        }
       } else if (confirmDialog.type === 'DELETE_ACCOUNT') {
         await Promise.all(tasks.map(task => axios.delete(`${API_URL}/${task._id}`)));
         localStorage.removeItem('taskmaster_settings');
@@ -148,13 +168,12 @@ export default function App() {
       }
       fetchTasks();
     } catch (error) {
-      console.error("Error executing deletion", error);
+      setApiError(error.response?.data?.error || 'Failed to execute delete operation.');
     } finally {
       setConfirmDialog({ isOpen: false, type: null, taskId: null });
     }
   };
 
-  // Calendar Navigation
   const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
 
@@ -177,6 +196,7 @@ export default function App() {
     return days;
   };
 
+  // Metrics Calculations
   const statsTotal = tasks.length;
   const statsCompleted = tasks.filter(t => t.status === 'Completed').length;
   const statsActive = statsTotal - statsCompleted;
@@ -222,7 +242,7 @@ export default function App() {
         <div>
           <div className="flex items-center gap-3 mb-10 px-2">
             <img
-              src="/favicon.png"
+              src="/logo.png"
               alt="TaskMaster Logo"
               className="w-10 h-10 rounded-2xl object-cover shadow-md shadow-purple-500/20"
             />
@@ -263,7 +283,6 @@ export default function App() {
           </nav>
         </div>
 
-        {/* User Card */}
         <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-extrabold text-xs shadow-sm">
             {settings.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
@@ -278,7 +297,17 @@ export default function App() {
       {/* MAIN VIEW */}
       <main className="flex-1 flex flex-col h-full overflow-hidden">
 
-        {/* HEADER NAVBAR */}
+        {/* API Error Notification */}
+        {apiError && (
+          <div className="mb-4 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-2.5 rounded-2xl text-xs font-bold flex justify-between items-center shadow-xs">
+            <span className="flex items-center gap-2">
+              <FiAlertCircle size={16} /> {apiError}
+            </span>
+            <button onClick={() => setApiError('')} className="text-rose-500 hover:text-rose-800"><FiX size={16} /></button>
+          </div>
+        )}
+
+        {/* Top Header */}
         <header className="flex justify-between items-center mb-6 shrink-0 bg-white px-6 py-3.5 rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">
           <div className="flex items-center bg-[#F8FAFC] rounded-2xl px-4 py-2 border border-slate-200/60 w-96 focus-within:border-[#7C3AED] transition-colors">
             <FiSearch className="text-slate-400 mr-3" size={16} />
@@ -306,10 +335,10 @@ export default function App() {
           </div>
         </header>
 
-        {/* WORKSPACE VIEW AREA */}
+        {/* Main Scrolling Body */}
         <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar pr-1 pb-6 gap-6">
 
-          {/* WELCOME SPRINT BANNER */}
+          {/* Welcome Banner */}
           {activeTab === 'dashboard' && (
             <div className="bg-gradient-to-r from-[#8B5CF6] via-[#7C3AED] to-[#6D28D9] rounded-3xl p-8 text-white shadow-lg shadow-purple-500/10 relative overflow-hidden shrink-0">
               <div className="relative z-10">
@@ -336,14 +365,12 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <div className="absolute right-0 bottom-0 translate-x-12 translate-y-12 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
             </div>
           )}
 
-          {/* MAIN SPLIT GRID (Timeline Calendar + Task Feed) */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
-            {/* TIMELINE / CALENDAR PANEL */}
+            {/* Calendar Sidebar Module */}
             {(activeTab === 'dashboard' || activeTab === 'calendar') && (
               <div className="xl:col-span-4 bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] shrink-0">
                 <div className="flex justify-between items-center mb-1">
@@ -390,10 +417,9 @@ export default function App() {
               </div>
             )}
 
-            {/* MAIN TASKS / CONTENT FEED */}
+            {/* Task Cards & View Switcher */}
             <div className={`${activeTab === 'dashboard' || activeTab === 'calendar' ? 'xl:col-span-8' : 'xl:col-span-12'} flex flex-col gap-4`}>
 
-              {/* Controls Header */}
               {activeTab !== 'settings' && activeTab !== 'analytics' && (
                 <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] flex flex-wrap justify-between items-center gap-4">
                   <div className="flex items-center gap-3">
@@ -404,15 +430,19 @@ export default function App() {
                     <button onClick={() => openModal()} className="ml-2 px-3.5 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm shadow-purple-500/20 transition-all hover:scale-[1.02]">
                       <FiPlus size={14} /> New Task
                     </button>
-                    {statsCompleted > 0 && (
-                      <button
-                        onClick={handleClearCompleted}
-                        className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-colors border border-rose-100"
-                        title="Delete all completed tasks"
-                      >
-                        <FiTrash2 size={13} /> Clear Done ({statsCompleted})
-                      </button>
-                    )}
+
+                    <button
+                      onClick={handleClearCompleted}
+                      disabled={statsCompleted === 0}
+                      className={`px-3 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all ${
+                        statsCompleted > 0
+                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100 cursor-pointer'
+                          : 'bg-slate-100 text-slate-400 border border-slate-200 opacity-60 cursor-not-allowed'
+                      }`}
+                      title={statsCompleted > 0 ? "Delete all completed tasks" : "No completed tasks to delete"}
+                    >
+                      <FiTrash2 size={13} /> Clear Done ({statsCompleted})
+                    </button>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
@@ -442,7 +472,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* RENDER ACTIVE TAB VIEW */}
+              {/* Analytics View */}
               {activeTab === 'analytics' ? (
                 <div className="flex flex-col gap-6">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -528,7 +558,7 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                /* LINEAR TASK CARDS */
+                /* Task Cards List */
                 <div className="space-y-3">
                   {(activeTab === 'dashboard' ? processedTasks.slice(0, 2) : processedTasks).length > 0 ?
                     (activeTab === 'dashboard' ? processedTasks.slice(0, 2) : processedTasks).map((task) => {
@@ -561,7 +591,6 @@ export default function App() {
                             </div>
                           </div>
 
-                          {/* Progress Indicator */}
                           <div className="my-2.5">
                             <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
                               <span>Sprint Progress</span>
@@ -613,7 +642,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* CONFIRMATION DIALOG MODAL */}
+      {/* Confirmation Dialog */}
       {confirmDialog.isOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-6 flex flex-col items-center text-center border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
@@ -651,14 +680,22 @@ export default function App() {
         </div>
       )}
 
-      {/* TASK MODAL */}
+      {/* Task Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 flex flex-col border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-extrabold text-slate-900">{editingId ? 'Edit Task' : 'Create New Task'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 p-2 hover:bg-slate-50 rounded-full transition-colors"><FiX size={18}/></button>
             </div>
+
+            {formError && (
+              <div className="mb-4 bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
+                <FiAlertCircle size={14} className="shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-400 mb-1.5 uppercase tracking-widest">Task Title</label>
