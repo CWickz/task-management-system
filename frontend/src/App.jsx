@@ -5,7 +5,8 @@ import {
   FiTrash2, FiX, FiCalendar, FiClock, FiChevronDown,
   FiCheckCircle, FiAlertCircle, FiAlertTriangle,
   FiPieChart, FiSettings, FiChevronLeft, FiChevronRight,
-  FiTarget, FiActivity, FiUser, FiShield, FiDownload, FiBell, FiCheck, FiMoreHorizontal
+  FiTarget, FiActivity, FiUser, FiShield, FiDownload,
+  FiBell, FiCheck, FiMoreHorizontal, FiTrendingUp, FiFlag
 } from 'react-icons/fi';
 
 const API_URL = 'http://localhost:5000/api/tasks';
@@ -100,10 +101,12 @@ export default function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = editingId ? formData : { ...formData, createdDate: new Date().toISOString() };
+
       if (editingId) {
-        await axios.put(`${API_URL}/${editingId}`, formData);
+        await axios.put(`${API_URL}/${editingId}`, payload);
       } else {
-        await axios.post(API_URL, formData);
+        await axios.post(API_URL, payload);
       }
       setIsModalOpen(false);
       fetchTasks();
@@ -150,7 +153,7 @@ export default function App() {
     }
   };
 
-  // Calendar Helper Functions
+  // Calendar Navigation
   const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
 
@@ -211,19 +214,21 @@ export default function App() {
   });
 
   return (
-    <div className="flex h-screen bg-[#F4F6F9] font-sans text-slate-800 p-6 overflow-hidden gap-6">
+    <div className="flex h-screen bg-[#F7F9FC] font-sans text-slate-800 p-6 overflow-hidden gap-6 antialiased">
 
       {/* SIDEBAR */}
-      <aside className="w-64 bg-white rounded-3xl p-6 flex flex-col shrink-0 border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-3 mb-10 px-2">
-          <div className="w-9 h-9 rounded-xl bg-[#7C3AED] flex items-center justify-center text-white font-extrabold text-base shadow-md">T</div>
-          <div>
-            <span className="font-extrabold text-sm tracking-tight text-slate-900 block leading-tight">TaskMaster</span>
-            <span className="text-[9px] font-extrabold text-slate-400 tracking-wider uppercase">Workspace Pro</span>
+      <aside className="w-64 bg-white rounded-3xl p-6 flex flex-col justify-between shrink-0 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">
+        <div>
+          <div className="flex items-center gap-3 mb-10 px-2">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#7C3AED] to-[#9333EA] flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-purple-500/20">
+              T
+            </div>
+            <div>
+              <span className="font-extrabold text-sm tracking-tight text-slate-900 block leading-tight">TaskMaster</span>
+              <span className="text-[9px] font-extrabold text-[#7C3AED] tracking-wider uppercase bg-purple-50 px-1.5 py-0.5 rounded">Workspace Pro</span>
+            </div>
           </div>
-        </div>
 
-        <div className="mb-6">
           <p className="text-[10px] font-extrabold text-slate-400 tracking-widest mb-3 px-3 uppercase">Menu</p>
           <nav className="space-y-1.5">
             {[
@@ -236,107 +241,123 @@ export default function App() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl font-bold text-xs transition-all ${
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl font-bold text-xs transition-all duration-200 ${
                   activeTab === item.id
-                    ? 'bg-[#EDE9FE] text-[#7C3AED]'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    ? 'bg-[#F3EEFE] text-[#7C3AED] shadow-sm font-extrabold'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                 }`}
               >
                 <span className="flex items-center gap-3"><item.icon size={16} /> {item.label}</span>
-                {item.badge !== undefined && <span className="text-[10px] px-2 py-0.5 rounded-full bg-white text-slate-600 font-bold shadow-sm">{item.badge}</span>}
+                {item.badge !== undefined && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    activeTab === item.id ? 'bg-[#7C3AED] text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {item.badge}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
         </div>
+
+        {/* User Card */}
+        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-extrabold text-xs shadow-sm">
+            {settings.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+          </div>
+          <div className="overflow-hidden">
+            <span className="block text-xs font-extrabold text-slate-800 truncate">{settings.name}</span>
+            <span className="block text-[10px] font-bold text-slate-400 truncate">{settings.role}</span>
+          </div>
+        </div>
       </aside>
 
-      {/* MAIN CONTENT CONTAINER */}
+      {/* MAIN VIEW */}
       <main className="flex-1 flex flex-col h-full overflow-hidden">
 
-        {/* TOP NAVBAR */}
-        <header className="flex justify-between items-center mb-6 shrink-0 bg-white px-6 py-3.5 rounded-3xl border border-slate-100 shadow-sm">
-          <div className="flex items-center bg-[#F8FAFC] rounded-2xl px-4 py-2 border border-slate-200/60 w-96">
+        {/* HEADER NAVBAR */}
+        <header className="flex justify-between items-center mb-6 shrink-0 bg-white px-6 py-3.5 rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">
+          <div className="flex items-center bg-[#F8FAFC] rounded-2xl px-4 py-2 border border-slate-200/60 w-96 focus-within:border-[#7C3AED] transition-colors">
             <FiSearch className="text-slate-400 mr-3" size={16} />
             <input
               type="text"
-              placeholder="Search tasks, tags, or assignees..."
+              placeholder="Search tasks, descriptions, or tags..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-transparent border-none outline-none text-xs w-full text-slate-700 font-medium placeholder-slate-400"
             />
-            <span className="text-[10px] bg-slate-200/60 text-slate-500 px-1.5 py-0.5 rounded font-bold">⌘K</span>
+            <span className="text-[10px] bg-white border border-slate-200 text-slate-400 px-1.5 py-0.5 rounded font-bold shadow-2xs">⌘K</span>
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-extrabold text-slate-700">PROGRESS</span>
+            <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+              <span className="text-[11px] font-extrabold text-slate-500">PROGRESS</span>
               <span className="text-xs font-extrabold text-[#7C3AED]">{progressPercent}%</span>
-              <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-[#7C3AED] rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
+              <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-[#7C3AED] to-[#9333EA] rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
               </div>
-              <span className="text-[10px] font-bold text-slate-400 ml-2">ACTIVE <strong className="text-slate-800">{statsActive}</strong></span>
-              <span className="text-[10px] font-bold text-slate-400">DONE <strong className="text-slate-800">{statsCompleted}</strong></span>
+              <div className="h-4 w-px bg-slate-200 mx-1"></div>
+              <span className="text-[10px] font-bold text-slate-500">ACTIVE <strong className="text-slate-900">{statsActive}</strong></span>
+              <span className="text-[10px] font-bold text-slate-500">DONE <strong className="text-emerald-600">{statsCompleted}</strong></span>
             </div>
 
-            <div className="h-6 w-px bg-slate-200"></div>
-
-            <button className="relative text-slate-400 hover:text-slate-600"><FiBell size={18} /><span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full"></span></button>
-
-            <div className="flex items-center gap-3 pl-2">
-              <div className="text-right">
-                <span className="block text-xs font-extrabold text-slate-900">{settings.name}</span>
-                <span className="block text-[9px] font-bold text-slate-400">{settings.role}</span>
-              </div>
-              <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-extrabold text-xs">
-                {settings.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
-              </div>
-            </div>
+            <button className="relative text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-50 rounded-xl transition-colors">
+              <FiBell size={18} />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
+            </button>
           </div>
         </header>
 
         {/* WORKSPACE VIEW AREA */}
-        <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar pr-2 pb-6 gap-6">
+        <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar pr-1 pb-6 gap-6">
 
-          {/* WELCOME BANNER (Dashboard Tab) */}
+          {/* WELCOME SPRINT BANNER */}
           {activeTab === 'dashboard' && (
-            <div className="bg-gradient-to-r from-[#8B5CF6] via-[#7C3AED] to-[#6D28D9] rounded-3xl p-8 text-white shadow-md relative overflow-hidden shrink-0">
-              <span className="inline-block px-3 py-1 bg-white/25 backdrop-blur-md rounded-lg text-[10px] font-extrabold tracking-widest uppercase mb-3">Overview Dashboard</span>
-              <h1 className="text-3xl font-extrabold mb-2">Welcome back, {settings.name}!</h1>
-              <p className="text-sm font-medium text-white/90 max-w-2xl mb-6">
-                You have completed <strong>{statsCompleted} out of {statsTotal}</strong> key sprint tasks. Keep the momentum going to achieve this week's milestone!
-              </p>
+            <div className="bg-gradient-to-r from-[#8B5CF6] via-[#7C3AED] to-[#6D28D9] rounded-3xl p-8 text-white shadow-lg shadow-purple-500/10 relative overflow-hidden shrink-0">
+              <div className="relative z-10">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-lg text-[10px] font-extrabold tracking-widest uppercase mb-3 text-purple-100">
+                  <FiFlag size={12} /> Overview Dashboard
+                </span>
+                <h1 className="text-3xl font-extrabold mb-2 tracking-tight">Welcome back, {settings.name}!</h1>
+                <p className="text-sm font-medium text-white/90 max-w-2xl mb-6 leading-relaxed">
+                  You have completed <strong>{statsCompleted} of {statsTotal}</strong> tasks. You are on track to wrap up this week's milestone deliverables.
+                </p>
 
-              <div className="grid grid-cols-3 gap-6 max-w-lg pt-4 border-t border-white/10">
-                <div>
-                  <span className="block text-[10px] font-extrabold uppercase tracking-wider text-white/70">Pending</span>
-                  <span className="text-2xl font-extrabold">{pendingCount} <span className="text-xs font-medium text-white/70">tasks</span></span>
-                </div>
-                <div>
-                  <span className="block text-[10px] font-extrabold uppercase tracking-wider text-white/70">In Progress</span>
-                  <span className="text-2xl font-extrabold">{inProgressCount} <span className="text-xs font-medium text-white/70">active</span></span>
-                </div>
-                <div>
-                  <span className="block text-[10px] font-extrabold uppercase tracking-wider text-white/70">High Priority</span>
-                  <span className="text-2xl font-extrabold">{highPriority} <span className="text-xs font-medium text-white/70">critical</span></span>
+                <div className="grid grid-cols-3 gap-6 max-w-lg pt-5 border-t border-white/15">
+                  <div>
+                    <span className="block text-[10px] font-extrabold uppercase tracking-wider text-purple-200">Pending</span>
+                    <span className="text-2xl font-extrabold">{pendingCount} <span className="text-xs font-medium text-purple-200">tasks</span></span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-extrabold uppercase tracking-wider text-purple-200">In Progress</span>
+                    <span className="text-2xl font-extrabold">{inProgressCount} <span className="text-xs font-medium text-purple-200">active</span></span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-extrabold uppercase tracking-wider text-purple-200">High Priority</span>
+                    <span className="text-2xl font-extrabold">{highPriority} <span className="text-xs font-medium text-purple-200">critical</span></span>
+                  </div>
                 </div>
               </div>
+              <div className="absolute right-0 bottom-0 translate-x-12 translate-y-12 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
             </div>
           )}
 
           {/* MAIN SPLIT GRID (Timeline Calendar + Task Feed) */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
-            {/* TIMELINE / CALENDAR SIDE PANEL (Visible on Dashboard & Calendar tab) */}
+            {/* TIMELINE / CALENDAR PANEL */}
             {(activeTab === 'dashboard' || activeTab === 'calendar') && (
-              <div className="xl:col-span-4 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm shrink-0">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-extrabold text-slate-900">October 2026</h3>
+              <div className="xl:col-span-4 bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] shrink-0">
+                <div className="flex justify-between items-center mb-1">
+                  <h3 className="text-sm font-extrabold text-slate-900">
+                    {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  </h3>
                   <div className="flex gap-1 text-slate-400">
-                    <button onClick={prevMonth} className="p-1 hover:bg-slate-50 rounded"><FiChevronLeft size={16} /></button>
-                    <button onClick={nextMonth} className="p-1 hover:bg-slate-50 rounded"><FiChevronRight size={16} /></button>
+                    <button onClick={prevMonth} className="p-1.5 hover:bg-slate-50 hover:text-slate-800 rounded-lg transition-colors"><FiChevronLeft size={16} /></button>
+                    <button onClick={nextMonth} className="p-1.5 hover:bg-slate-50 hover:text-slate-800 rounded-lg transition-colors"><FiChevronRight size={16} /></button>
                   </div>
                 </div>
-                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-5">Sprint 42 Timeline</p>
+                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-5">Sprint Schedule Timeline</p>
 
                 <div className="grid grid-cols-7 mb-3 text-center">
                   {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
@@ -344,30 +365,30 @@ export default function App() {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-7 gap-y-3 text-center mb-6">
+                <div className="grid grid-cols-7 gap-y-2.5 text-center mb-5">
                   {getCalendarDays().slice(0, 28).map((day, idx) => {
-                    const isToday = day.getDate() === 10 && day.getMonth() === 9; // Oct 10, 2026
-                    const isSelected = day.getDate() === 22;
+                    const isToday = day.toDateString() === new Date().toDateString();
+                    const hasTasks = tasks.some(t => new Date(t.dueDate).toDateString() === day.toDateString());
                     return (
-                      <div key={idx} className="flex flex-col items-center justify-center relative">
-                        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold ${
-                          isToday ? 'bg-[#7C3AED] text-white shadow-sm' :
-                          isSelected ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'
+                      <div key={idx} className="flex flex-col items-center justify-center relative py-0.5">
+                        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold transition-all ${
+                          isToday ? 'bg-[#7C3AED] text-white shadow-md shadow-purple-500/20' :
+                          hasTasks ? 'text-[#7C3AED] bg-purple-50 font-extrabold' : 'text-slate-700 hover:bg-slate-100'
                         }`}>
                           {day.getDate()}
                         </span>
-                        {day.getDate() === 22 && <span className="absolute -bottom-1.5 w-1 h-1 bg-[#7C3AED] rounded-full"></span>}
                       </div>
                     );
                   })}
                 </div>
 
-                <div className="bg-[#F8FAFC] p-3.5 rounded-2xl border border-slate-100 flex justify-between items-center">
+                {/* Micro Metric Chip */}
+                <div className="p-3 bg-purple-50/60 rounded-2xl border border-purple-100 flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-xl text-[#7C3AED] shadow-2xs"><FiTrendingUp size={16} /></div>
                   <div>
-                    <span className="block text-[10px] font-bold text-slate-400">Due Task on Oct 22:</span>
-                    <span className="text-xs font-extrabold text-slate-800">Roadmap Sync</span>
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wide block">Sprint Completion Rate</span>
+                    <span className="text-xs font-extrabold text-slate-800">{progressPercent}% On Time Delivery</span>
                   </div>
-                  <span className="text-xs font-extrabold text-[#7C3AED] cursor-pointer hover:underline">Sync</span>
                 </div>
               </div>
             )}
@@ -377,11 +398,13 @@ export default function App() {
 
               {/* Controls Header */}
               {activeTab !== 'settings' && activeTab !== 'analytics' && (
-                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap justify-between items-center gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] flex flex-wrap justify-between items-center gap-4">
                   <div className="flex items-center gap-3">
-                    <span className="p-2 bg-[#EDE9FE] text-[#7C3AED] rounded-xl"><FiCheckSquare size={16} /></span>
-                    <h3 className="text-sm font-extrabold text-slate-900">Dashboard Overview</h3>
-                    <button onClick={() => openModal()} className="ml-3 px-3.5 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all">
+                    <span className="p-2 bg-[#F3EEFE] text-[#7C3AED] rounded-xl"><FiCheckSquare size={16} /></span>
+                    <h3 className="text-sm font-extrabold text-slate-900">
+                      {activeTab === 'dashboard' ? 'Recent Tasks (Latest 2)' : 'All Active Tasks'}
+                    </h3>
+                    <button onClick={() => openModal()} className="ml-2 px-3.5 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm shadow-purple-500/20 transition-all hover:scale-[1.02]">
                       <FiPlus size={14} /> New Task
                     </button>
                   </div>
@@ -389,19 +412,21 @@ export default function App() {
                   <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
                       Sort:
-                      <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none">
+                      <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer">
                         <option value="newest">Newest First</option>
                         <option value="dueDate">Due Date</option>
                         <option value="priority">Priority</option>
                       </select>
                     </div>
 
-                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                    <div className="flex bg-slate-100/80 p-1 rounded-xl">
                       {['All', 'Pending', 'In Progress', 'Completed'].map(status => (
                         <button
                           key={status}
                           onClick={() => setFilterStatus(status)}
-                          className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${filterStatus === status ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                          className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                            filterStatus === status ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                          }`}
                         >
                           {status}
                         </button>
@@ -415,26 +440,26 @@ export default function App() {
               {activeTab === 'analytics' ? (
                 <div className="flex flex-col gap-6">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">
                       <p className="text-[10px] font-extrabold text-slate-400 uppercase">Total Tasks</p>
                       <h4 className="text-3xl font-extrabold text-slate-900 mt-2">{statsTotal}</h4>
                     </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">
                       <p className="text-[10px] font-extrabold text-slate-400 uppercase">Completed</p>
                       <h4 className="text-3xl font-extrabold text-emerald-600 mt-2">{statsCompleted}</h4>
                     </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">
                       <p className="text-[10px] font-extrabold text-slate-400 uppercase">In Progress</p>
                       <h4 className="text-3xl font-extrabold text-blue-600 mt-2">{inProgressCount}</h4>
                     </div>
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">
                       <p className="text-[10px] font-extrabold text-rose-400 uppercase">Overdue</p>
                       <h4 className="text-3xl font-extrabold text-rose-600 mt-2">{overdueTasks}</h4>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">
                       <h3 className="text-sm font-extrabold text-slate-900 mb-6 flex items-center gap-2"><FiActivity className="text-[#7C3AED]"/> Status Breakdown</h3>
                       <div className="space-y-4">
                         <div>
@@ -452,7 +477,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">
                       <h3 className="text-sm font-extrabold text-slate-900 mb-6 flex items-center gap-2"><FiTarget className="text-[#7C3AED]"/> Priority Distribution</h3>
                       <div className="space-y-4">
                         <div>
@@ -472,7 +497,7 @@ export default function App() {
                   </div>
                 </div>
               ) : activeTab === 'settings' ? (
-                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm max-w-2xl">
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)] max-w-2xl">
                   <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2 mb-6 pb-4 border-b border-slate-100"><FiUser className="text-[#7C3AED]"/> Profile Information</h3>
                   <div className="space-y-4 mb-8">
                     <div>
@@ -498,56 +523,64 @@ export default function App() {
                 </div>
               ) : (
                 /* LINEAR TASK CARDS */
-                <div className="space-y-4">
-                  {processedTasks.length > 0 ? processedTasks.map((task) => {
+                <div className="space-y-3">
+                  {(activeTab === 'dashboard' ? processedTasks.slice(0, 2) : processedTasks).length > 0 ?
+                    (activeTab === 'dashboard' ? processedTasks.slice(0, 2) : processedTasks).map((task) => {
                     const topBarColor = task.priority === 'High' ? 'bg-rose-500' : task.priority === 'Medium' ? 'bg-amber-400' : 'bg-emerald-500';
+                    const isOverdue = new Date(task.dueDate) < new Date() && task.status !== 'Completed';
 
                     return (
-                      <div key={task._id} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden group relative transition-all hover:shadow-md">
-                        <div className={`w-full h-1.5 ${topBarColor}`}></div>
+                      <div key={task._id} className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_-2px_rgba(0,0,0,0.03)] overflow-hidden group transition-all duration-200 hover:shadow-md hover:border-slate-200">
+                        <div className={`w-full h-1 ${topBarColor}`}></div>
 
-                        <div className="p-6">
-                          <div className="flex justify-between items-start mb-2">
+                        <div className="p-4">
+                          <div className="flex justify-between items-start mb-1.5">
                             <div>
-                              <h4 className="font-extrabold text-slate-900 text-base mb-1">{task.title}</h4>
-                              <p className="text-xs text-slate-500 font-medium">{task.description}</p>
+                              <h4 className="font-extrabold text-slate-900 text-sm mb-0.5 tracking-tight">{task.title}</h4>
+                              <p className="text-[11px] text-slate-500 font-medium line-clamp-1">{task.description}</p>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                              <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-lg uppercase tracking-wider ${
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider ${
                                 task.priority === 'High' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
                                 task.priority === 'Medium' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
                               }`}>
-                                {task.priority === 'High' ? '▲ High Priority' : `${task.priority} Priority`}
+                                {task.priority === 'High' ? '▲ High' : task.priority}
                               </span>
-                              <span className="text-[11px] font-bold text-slate-400">Due {new Date(task.dueDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                isOverdue ? 'bg-rose-50 text-rose-600 font-extrabold' : 'text-slate-400'
+                              }`}>
+                                {isOverdue ? 'Overdue: ' : 'Due '} {new Date(task.dueDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}
+                              </span>
                             </div>
                           </div>
 
-                          <div className="my-4">
-                            <div className="flex justify-between text-[11px] font-bold text-slate-400 mb-1.5">
-                              <span>Subtasks completion</span>
-                              <span>{task.status === 'Completed' ? '4/4 (100%)' : task.status === 'In Progress' ? '2/4 (50%)' : '0/4 (0%)'}</span>
+                          {/* Progress Indicator */}
+                          <div className="my-2.5">
+                            <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
+                              <span>Sprint Progress</span>
+                              <span>{task.status === 'Completed' ? 'Completed (100%)' : task.status === 'In Progress' ? 'In Review (50%)' : 'Queue (15%)'}</span>
                             </div>
                             <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                               <div className="bg-[#7C3AED] h-full rounded-full transition-all duration-500" style={{ width: task.status === 'Completed' ? '100%' : task.status === 'In Progress' ? '50%' : '15%' }}></div>
                             </div>
                           </div>
 
-                          <div className="flex justify-between items-center pt-2 border-t border-slate-50">
-                            <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-                              <button onClick={() => handleQuickStatusChange(task, 'Pending')} className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${task.status === 'Pending' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Pending</button>
-                              <button onClick={() => handleQuickStatusChange(task, 'In Progress')} className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${task.status === 'In Progress' ? 'bg-[#7C3AED] text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>In Progress</button>
-                              <button onClick={() => handleQuickStatusChange(task, 'Completed')} className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${task.status === 'Completed' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Completed</button>
+                          <div className="flex justify-between items-center pt-2.5 border-t border-slate-50">
+                            <div className="flex bg-slate-100/80 p-0.5 rounded-lg gap-1">
+                              <button onClick={() => handleQuickStatusChange(task, 'Pending')} className={`px-2.5 py-0.5 text-[10px] font-bold rounded-md transition-all ${task.status === 'Pending' ? 'bg-slate-900 text-white shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}>Pending</button>
+                              <button onClick={() => handleQuickStatusChange(task, 'In Progress')} className={`px-2.5 py-0.5 text-[10px] font-bold rounded-md transition-all ${task.status === 'In Progress' ? 'bg-[#7C3AED] text-white shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}>In Progress</button>
+                              <button onClick={() => handleQuickStatusChange(task, 'Completed')} className={`px-2.5 py-0.5 text-[10px] font-bold rounded-md transition-all ${task.status === 'Completed' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}>Completed</button>
                             </div>
 
-                            <div className="flex items-center gap-3">
-                              <div className="flex -space-x-1.5">
-                                <span className="w-6 h-6 rounded-full bg-indigo-500 text-white text-[9px] font-extrabold flex items-center justify-center border border-white">CS</span>
-                                <span className="w-6 h-6 rounded-full bg-purple-500 text-white text-[9px] font-extrabold flex items-center justify-center border border-white">AK</span>
-                              </div>
-                              <button onClick={() => openModal(task)} className="p-1.5 text-slate-400 hover:text-[#7C3AED] rounded-lg"><FiEdit2 size={14}/></button>
-                              <button onClick={() => handleDelete(task._id)} className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg"><FiTrash2 size={14}/></button>
+                            <div className="flex items-center gap-2">
+                              {task.createdDate && (
+                                <span className="text-[9px] font-bold text-slate-400">
+                                  Created: {new Date(task.createdDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}
+                                </span>
+                              )}
+                              <button onClick={() => openModal(task)} className="p-1.5 text-slate-400 hover:text-[#7C3AED] hover:bg-purple-50 rounded-lg transition-colors"><FiEdit2 size={13}/></button>
+                              <button onClick={() => handleDelete(task._id)} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"><FiTrash2 size={13}/></button>
                             </div>
                           </div>
 
@@ -555,8 +588,13 @@ export default function App() {
                       </div>
                     );
                   }) : (
-                    <div className="py-16 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
-                      <p className="text-slate-500 font-bold text-sm">No tasks found matching your filter.</p>
+                    <div className="py-14 text-center bg-white rounded-3xl border border-dashed border-slate-200">
+                      <FiCheckCircle size={32} className="mx-auto text-slate-300 mb-2" />
+                      <p className="text-slate-700 font-extrabold text-sm">No tasks found</p>
+                      <p className="text-slate-400 text-xs mt-0.5">Create your first task or change filter parameters.</p>
+                      <button onClick={() => openModal()} className="mt-4 px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-colors">
+                        Create Task
+                      </button>
                     </div>
                   )}
                 </div>
@@ -571,29 +609,29 @@ export default function App() {
 
       {/* TASK MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 flex flex-col border border-slate-100">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 flex flex-col border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-extrabold text-slate-900">{editingId ? 'Edit Task' : 'Create New Task'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 p-2 bg-slate-50 rounded-full"><FiX size={18}/></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 p-2 hover:bg-slate-50 rounded-full transition-colors"><FiX size={18}/></button>
             </div>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-400 mb-1.5 uppercase tracking-widest">Task Title</label>
-                <input required type="text" name="title" value={formData.title} onChange={handleInputChange} className="w-full bg-[#F8FAFC] border border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-800" />
+                <input required type="text" name="title" value={formData.title} onChange={handleInputChange} className="w-full bg-[#F8FAFC] border border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#7C3AED]" />
               </div>
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-400 mb-1.5 uppercase tracking-widest">Description</label>
-                <textarea required name="description" value={formData.description} onChange={handleInputChange} rows="3" className="w-full bg-[#F8FAFC] border border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-800"></textarea>
+                <textarea required name="description" value={formData.description} onChange={handleInputChange} rows="3" className="w-full bg-[#F8FAFC] border border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#7C3AED]"></textarea>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-400 mb-1.5 uppercase tracking-widest">Due Date</label>
-                  <input required type="date" name="dueDate" value={formData.dueDate} onChange={handleInputChange} className="w-full bg-[#F8FAFC] border border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-800" />
+                  <input required type="date" name="dueDate" value={formData.dueDate} onChange={handleInputChange} className="w-full bg-[#F8FAFC] border border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#7C3AED]" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-400 mb-1.5 uppercase tracking-widest">Priority</label>
-                  <select name="priority" value={formData.priority} onChange={handleInputChange} className="w-full bg-[#F8FAFC] border border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-800">
+                  <select name="priority" value={formData.priority} onChange={handleInputChange} className="w-full bg-[#F8FAFC] border border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#7C3AED]">
                     <option value="Low">Low</option>
                     <option value="Medium">Medium</option>
                     <option value="High">High</option>
@@ -602,15 +640,15 @@ export default function App() {
               </div>
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-400 mb-1.5 uppercase tracking-widest">Status</label>
-                <select name="status" value={formData.status} onChange={handleInputChange} className="w-full bg-[#F8FAFC] border border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-800">
+                <select name="status" value={formData.status} onChange={handleInputChange} className="w-full bg-[#F8FAFC] border border-slate-200 p-3 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#7C3AED]">
                   <option value="Pending">Pending</option>
                   <option value="In Progress">In Progress</option>
                   <option value="Completed">Completed</option>
                 </select>
               </div>
               <div className="mt-4 flex gap-3 justify-end">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-xs font-bold text-slate-500">Cancel</button>
-                <button type="submit" className="px-6 py-2.5 text-xs font-extrabold text-white bg-[#7C3AED] rounded-xl shadow-sm">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
+                <button type="submit" className="px-6 py-2.5 text-xs font-extrabold text-white bg-[#7C3AED] hover:bg-[#6D28D9] rounded-xl shadow-md shadow-purple-500/20 transition-all">
                   {editingId ? 'Save Updates' : 'Add Task'}
                 </button>
               </div>
