@@ -6,7 +6,7 @@ import {
   FiCheckCircle, FiAlertCircle, FiAlertTriangle,
   FiPieChart, FiSettings, FiChevronLeft, FiChevronRight,
   FiTarget, FiActivity, FiUser, FiShield, FiDownload,
-  FiBell, FiCheck, FiMoreHorizontal, FiTrendingUp, FiFlag
+  FiCheck, FiMoreHorizontal, FiTrendingUp, FiFlag
 } from 'react-icons/fi';
 
 const API_URL = 'http://localhost:5000/api/tasks';
@@ -21,7 +21,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 9, 1)); // October 2026
+  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 9, 1));
 
   // Persistent Settings State
   const [settings, setSettings] = useState(() => {
@@ -115,11 +115,12 @@ export default function App() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this task?")) {
-      await axios.delete(`${API_URL}/${id}`);
-      fetchTasks();
-    }
+  const handleDelete = (id) => {
+    setConfirmDialog({ isOpen: true, type: 'DELETE_TASK', taskId: id });
+  };
+
+  const handleClearCompleted = () => {
+    setConfirmDialog({ isOpen: true, type: 'CLEAR_COMPLETED', taskId: null });
   };
 
   const handleQuickStatusChange = async (task, newStatus) => {
@@ -220,9 +221,11 @@ export default function App() {
       <aside className="w-64 bg-white rounded-3xl p-6 flex flex-col justify-between shrink-0 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.03)]">
         <div>
           <div className="flex items-center gap-3 mb-10 px-2">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#7C3AED] to-[#9333EA] flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-purple-500/20">
-              T
-            </div>
+            <img
+              src="/favicon.png"
+              alt="TaskMaster Logo"
+              className="w-10 h-10 rounded-2xl object-cover shadow-md shadow-purple-500/20"
+            />
             <div>
               <span className="font-extrabold text-sm tracking-tight text-slate-900 block leading-tight">TaskMaster</span>
               <span className="text-[9px] font-extrabold text-[#7C3AED] tracking-wider uppercase bg-purple-50 px-1.5 py-0.5 rounded">Workspace Pro</span>
@@ -300,11 +303,6 @@ export default function App() {
               <span className="text-[10px] font-bold text-slate-500">ACTIVE <strong className="text-slate-900">{statsActive}</strong></span>
               <span className="text-[10px] font-bold text-slate-500">DONE <strong className="text-emerald-600">{statsCompleted}</strong></span>
             </div>
-
-            <button className="relative text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-50 rounded-xl transition-colors">
-              <FiBell size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
-            </button>
           </div>
         </header>
 
@@ -382,7 +380,6 @@ export default function App() {
                   })}
                 </div>
 
-                {/* Micro Metric Chip */}
                 <div className="p-3 bg-purple-50/60 rounded-2xl border border-purple-100 flex items-center gap-3">
                   <div className="p-2 bg-white rounded-xl text-[#7C3AED] shadow-2xs"><FiTrendingUp size={16} /></div>
                   <div>
@@ -407,6 +404,15 @@ export default function App() {
                     <button onClick={() => openModal()} className="ml-2 px-3.5 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm shadow-purple-500/20 transition-all hover:scale-[1.02]">
                       <FiPlus size={14} /> New Task
                     </button>
+                    {statsCompleted > 0 && (
+                      <button
+                        onClick={handleClearCompleted}
+                        className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-colors border border-rose-100"
+                        title="Delete all completed tasks"
+                      >
+                        <FiTrash2 size={13} /> Clear Done ({statsCompleted})
+                      </button>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
@@ -606,6 +612,44 @@ export default function App() {
 
         </div>
       </main>
+
+      {/* CONFIRMATION DIALOG MODAL */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-6 flex flex-col items-center text-center border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4">
+              <FiAlertTriangle size={24} />
+            </div>
+
+            <h3 className="text-base font-extrabold text-slate-900 mb-1">
+              {confirmDialog.type === 'CLEAR_COMPLETED' ? 'Delete Completed Tasks?' : 'Delete Task?'}
+            </h3>
+
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+              {confirmDialog.type === 'CLEAR_COMPLETED'
+                ? `Are you sure you want to delete all ${statsCompleted} completed tasks? This action cannot be undone.`
+                : 'Are you sure you want to delete this task? This action cannot be undone.'}
+            </p>
+
+            <div className="flex gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => setConfirmDialog({ isOpen: false, type: null, taskId: null })}
+                className="flex-1 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={executeConfirmAction}
+                className="flex-1 py-2.5 text-xs font-extrabold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-sm transition-colors"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TASK MODAL */}
       {isModalOpen && (
